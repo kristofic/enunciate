@@ -228,11 +228,11 @@ public class Element extends Accessor {
       }, this.env, XmlElement.DEFAULT.class);
 
       if (typeMirror != null) {
-        return XmlTypeFactory.getXmlType(typeMirror, this.context);
+        return XmlTypeFactory.decorateWithRestrictions(XmlTypeFactory.getXmlType(typeMirror, this.context), this, this.context);
       }
     }
 
-    return super.getBaseType();
+    return XmlTypeFactory.decorateWithRestrictions(super.getBaseType(), this, this.context);
   }
 
   /**

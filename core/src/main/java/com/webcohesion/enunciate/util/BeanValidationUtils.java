@@ -21,6 +21,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.validation.constraints.*;
 import java.lang.annotation.Annotation;
+import java.text.MessageFormat;
 import java.util.*;
 
 /**
@@ -112,71 +113,83 @@ public class BeanValidationUtils {
     return false;
   }
 
-  public static String describeConstraints(Element el, boolean required, String ... ignoredValidationGroups) {
-    Null mustBeNull = el.getAnnotation(Null.class);
+  public static List<Constraint> collectConstraints(Element el, String ... ignoredValidationGroups) {
+    List<Constraint> constraints = new ArrayList<Constraint>();
+
+    Null mustBeNull = getActiveValidation(el, Null.class, ignoredValidationGroups);
     if (mustBeNull != null) {
-      return "must be null";
+      constraints.add(new Constraint(ConstraintType.Null));
+      return constraints;
     }
 
-    List<String> constraints = new ArrayList<String>();
-    required = required || getActiveValidation(el, NotNull.class, ignoredValidationGroups) != null;
-    if (required) {
-      constraints.add("required");
+    NotNull notNull = getActiveValidation(el, NotNull.class, ignoredValidationGroups);
+    if (notNull != null) {
+      constraints.add(new Constraint(ConstraintType.NotNull));
     }
 
     AssertFalse mustBeFalse = getActiveValidation(el, AssertFalse.class, ignoredValidationGroups);
     if (mustBeFalse != null) {
-      constraints.add("must be \"false\"");
+      constraints.add(new Constraint(ConstraintType.False));
     }
 
     AssertTrue mustBeTrue = getActiveValidation(el, AssertTrue.class, ignoredValidationGroups);
     if (mustBeTrue != null) {
-      constraints.add("must be \"true\"");
+      constraints.add(new Constraint(ConstraintType.True));
     }
 
     DecimalMax decimalMax = getActiveValidation(el, DecimalMax.class, ignoredValidationGroups);
     if (decimalMax != null) {
-      constraints.add("max: " + decimalMax.value() + (decimalMax.inclusive() ? "" : " (exclusive)"));
+      constraints.add(new Constraint(ConstraintType.DecimalMax, decimalMax.value(), decimalMax.inclusive()));
     }
 
     DecimalMin decimalMin = getActiveValidation(el, DecimalMin.class, ignoredValidationGroups);
     if (decimalMin != null) {
-      constraints.add("min: " + decimalMin.value() + (decimalMin.inclusive() ? "" : " (exclusive)"));
+      constraints.add(new Constraint(ConstraintType.DecimalMin, decimalMin.value(), decimalMin.inclusive()));
     }
 
     Digits digits = getActiveValidation(el, Digits.class, ignoredValidationGroups);
     if (digits != null) {
-      constraints.add("max digits: " + digits.integer() + " (integer), " + digits.fraction() + " (fraction)");
+      constraints.add(new Constraint(ConstraintType.Digits, digits.integer(), digits.fraction()));
     }
 
     Future dateInFuture = getActiveValidation(el, Future.class, ignoredValidationGroups);
     if (dateInFuture != null) {
-      constraints.add("future date");
+      constraints.add(new Constraint(ConstraintType.Future));
     }
 
     Max max = getActiveValidation(el, Max.class, ignoredValidationGroups);
     if (max != null) {
-      constraints.add("max: " + max.value());
+      constraints.add(new Constraint(ConstraintType.Max, max.value()));
     }
 
     Min min = getActiveValidation(el, Min.class, ignoredValidationGroups);
     if (min != null) {
-      constraints.add("min: " + min.value());
+      constraints.add(new Constraint(ConstraintType.Min, min.value()));
     }
 
     Past dateInPast = getActiveValidation(el, Past.class, ignoredValidationGroups);
     if (dateInPast != null) {
-      constraints.add("past date");
+      constraints.add(new Constraint(ConstraintType.Past));
     }
 
     Pattern mustMatchPattern = getActiveValidation(el, Pattern.class, ignoredValidationGroups);
     if (mustMatchPattern != null) {
-      constraints.add("regex: " + mustMatchPattern.regexp());
+      constraints.add(new Constraint(ConstraintType.Regexp, mustMatchPattern.regexp()));
     }
 
     Size size = getActiveValidation(el, Size.class, ignoredValidationGroups);
     if (size != null) {
-      constraints.add("max size: " + size.max() + ", min size: " + size.min());
+      constraints.add(new Constraint(ConstraintType.Size, size.max(), size.min()));
+    }
+
+    return constraints;
+  }
+
+  public static String describeConstraints(Element el, boolean required, String ... ignoredValidationGroups) {
+    List<Constraint> constraints = collectConstraints(el, ignoredValidationGroups);
+
+    if (required) {
+      addRequiredIfNotPresent(constraints);
     }
 
     if (constraints.isEmpty()) {
@@ -184,14 +197,103 @@ public class BeanValidationUtils {
     }
 
     StringBuilder builder = new StringBuilder();
-    Iterator<String> it = constraints.iterator();
+    Iterator<Constraint> it = constraints.iterator();
     while (it.hasNext()) {
-      String token = it.next();
+      String token = it.next().toString();
       builder.append(token);
       if (it.hasNext()) {
         builder.append(", ");
       }
     }
     return builder.toString();
+  }
+
+  private static void addRequiredIfNotPresent(List<Constraint> constraints) {
+    for (Constraint constraint : constraints) {
+      if (constraint.getType() == ConstraintType.NotNull) {
+        return;
+      }
+    }
+
+    constraints.add(0, new Constraint(ConstraintType.NotNull));
+  }
+
+  public static class Constraint {
+    private ConstraintType type;
+    private Object [] params;
+
+    public Constraint(ConstraintType type, Object ... params) {
+      this.type = type;
+      this.params = params;
+    }
+
+    public ConstraintType getType() {
+      return this.type;
+    }
+
+    public Object[] getParams() {
+      return this.params;
+    }
+
+    @Override
+    public String toString() {
+      return this.type.getDescription(this.params);
+    }
+  }
+
+  public enum ConstraintType {
+    Null("must be null"),
+    NotNull("required"),
+    False("must be \"false\""),
+    True("must be \"true\""),
+    DecimalMax("max: {0}{1}") {
+      @Override
+      protected Object processParam(int i, Object param) {
+        if (i == 1) {
+          return Boolean.TRUE.equals(param) ? "" : " (exclusive)";
+        } else {
+          return param;
+        }
+      }
+    },
+    DecimalMin("min: {0}{1}") {
+      @Override
+      protected Object processParam(int i, Object param) {
+        if (i == 1) {
+          return Boolean.TRUE.equals(param) ? "" : " (exclusive)";
+        } else {
+          return param;
+        }
+      }
+    },
+    Digits("max digits: {0} (integer), {1} (fraction)"),
+    Future("future date"),
+    Max("max: {0}"),
+    Min("min: {0}"),
+    Past("past date"),
+    Regexp("regex: {0}"),
+    Size("max size: {0}, min size: {1}");
+
+    private String description;
+
+    ConstraintType(String description) {
+      this.description = description;
+    }
+
+    public String getDescription(Object ... params) {
+      return MessageFormat.format(this.description, processParams(params));
+    }
+
+    private Object [] processParams(Object ... params) {
+      Object [] processedParams = new Object[params.length];
+      for (int i = 0; i < params.length; i++) {
+        processedParams[i] = processParam(i, params[i]);
+      }
+      return  processedParams;
+    }
+
+    protected Object processParam(int i, Object param) {
+      return param;
+    }
   }
 }

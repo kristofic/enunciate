@@ -965,12 +965,22 @@ public class TestEnunciateIDLModule extends TestCase {
       if ("text".equals(childElementName)) {
         assertEquals(BigInteger.ZERO, childElement.getMinOccurs());
         assertEquals(BigInteger.ONE, childElement.getMaxOccurs());
-        assertQNameEquals(W3C_XML_SCHEMA_NS_URI, "string", elementDecl.getType());
+        assertNoteTextType(elementDecl.getType().asSimpleType());
       }
       else {
         fail("Unknown child element: " + childElementName);
       }
     }
+  }
+
+  protected void assertNoteTextType(XSSimpleType noteTextType) {
+    assertTrue(noteTextType.isRestriction());
+    XSRestrictionSimpleType restriction = noteTextType.asRestriction();
+    assertQNameEquals(W3C_XML_SCHEMA_NS_URI, "string", restriction.getSimpleBaseType());
+
+    List<XSFacet> lengthFacets = restriction.getDeclaredFacets(XSFacet.FACET_MAXLENGTH);
+    assertEquals(1, lengthFacets.size());
+    assertEquals("1000",lengthFacets.get(0).getValue().toString());
   }
 
   protected void assertInfosetType(XSComplexType infosetType) {

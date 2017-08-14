@@ -15,6 +15,7 @@
  */
 package com.webcohesion.enunciate.modules.jaxb.model.types;
 
+import com.sun.xml.internal.xsom.XSFacet;
 import com.webcohesion.enunciate.EnunciateException;
 import com.webcohesion.enunciate.javac.decorations.Annotations;
 import com.webcohesion.enunciate.javac.decorations.TypeMirrorDecorator;
@@ -22,7 +23,9 @@ import com.webcohesion.enunciate.javac.decorations.type.DecoratedTypeMirror;
 import com.webcohesion.enunciate.javac.decorations.type.TypeMirrorUtils;
 import com.webcohesion.enunciate.modules.jaxb.EnunciateJaxbContext;
 import com.webcohesion.enunciate.modules.jaxb.model.Accessor;
+import com.webcohesion.enunciate.modules.jaxb.model.Restriction;
 import com.webcohesion.enunciate.modules.jaxb.model.adapters.Adaptable;
+import com.webcohesion.enunciate.util.BeanValidationUtils;
 
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
@@ -160,4 +163,76 @@ public class XmlTypeFactory {
     return componentType.accept(visitor, new XmlTypeVisitor.Context(context, decorated.isArray(), decorated.isCollection(), new LinkedList<String>()));
   }
 
+  public static XmlType decorateWithRestrictions(XmlType baseType, Accessor accessor, EnunciateJaxbContext context) {
+    List<Restriction> restrictions = getTypeRestrictions(baseType, accessor, context);
+    if (restrictions.isEmpty()) {
+      return baseType;
+    }
+    return new RestrictedXmlType(baseType, restrictions);
+  }
+
+  private static List<Restriction> getTypeRestrictions(XmlType baseType, Accessor accessor, EnunciateJaxbContext context) {
+    List<BeanValidationUtils.Constraint> constraints = BeanValidationUtils.collectConstraints(accessor, context.getIgnoredValidationGroups());
+    List<Restriction> restrictions = new ArrayList(constraints.size());
+    for (BeanValidationUtils.Constraint constraint : constraints) {
+      switch (constraint.getType()) {
+        case False: {
+          restrictions.add(new Restriction(XSFacet.FACET_PATTERN, "false"));
+          break;
+        }
+        case True: {
+          restrictions.add(new Restriction(XSFacet.FACET_PATTERN, "true"));
+          break;
+        }
+        case DecimalMax: {
+          boolean inclusive = Boolean.TRUE.equals(constraint.getParams()[1]);
+          restrictions.add(new Restriction(inclusive ? XSFacet.FACET_MAXINCLUSIVE : XSFacet.FACET_MAXEXCLUSIVE, String.valueOf(constraint.getParams()[0])));
+          break;
+        }
+        case DecimalMin: {
+          boolean inclusive = Boolean.TRUE.equals(constraint.getParams()[1]);
+          restrictions.add(new Restriction(inclusive ? XSFacet.FACET_MININCLUSIVE : XSFacet.FACET_MINEXCLUSIVE, String.valueOf(constraint.getParams()[0])));
+          break;
+        }
+        case Digits: {
+          int integer = (Integer) constraint.getParams()[0];
+          int fraction = (Integer) constraint.getParams()[1];
+          restrictions.add(new Restriction(XSFacet.FACET_TOTALDIGITS, String.valueOf(integer + fraction)));
+          restrictions.add(new Restriction(XSFacet.FACET_FRACTIONDIGITS, String.valueOf(fraction)));
+          break;
+        }
+        case Max: {
+          if (baseType == KnownXmlType.STRING || baseType == KnownXmlType.NORMALIZED_STRING) {
+            restrictions.add(new Restriction(XSFacet.FACET_MAXLENGTH, String.valueOf(constraint.getParams()[0])));
+          } else {
+            restrictions.add(new Restriction(XSFacet.FACET_MAXINCLUSIVE, String.valueOf(constraint.getParams()[0])));
+          }
+          break;
+        }
+        case Min: {
+          if (baseType == KnownXmlType.STRING || baseType == KnownXmlType.NORMALIZED_STRING) {
+            restrictions.add(new Restriction(XSFacet.FACET_MINLENGTH, String.valueOf(constraint.getParams()[0])));
+          } else {
+            restrictions.add(new Restriction(XSFacet.FACET_MININCLUSIVE, String.valueOf(constraint.getParams()[0])));
+          }
+          break;
+        }
+        case Regexp: {
+          restrictions.add(new Restriction(XSFacet.FACET_PATTERN, String.valueOf(constraint.getParams()[0])));
+          break;
+        }
+        case Size: {
+          int max = (Integer) constraint.getParams()[0];
+          int min = (Integer) constraint.getParams()[1];
+          restrictions.add(new Restriction(XSFacet.FACET_MAXLENGTH, String.valueOf(max)));
+          if (min > 0) {
+            restrictions.add(new Restriction(XSFacet.FACET_MINLENGTH, String.valueOf(max)));
+          }
+          break;
+        }
+      }
+    }
+
+    return restrictions;
+  }
 }

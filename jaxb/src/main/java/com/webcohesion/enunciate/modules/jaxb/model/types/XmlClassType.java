@@ -94,4 +94,12 @@ public class XmlClassType implements XmlType {
     return typeDef;
   }
 
+  /**
+   * The definition of this type is never restricted.
+   *
+   * @return The definition of this type is never restricted.
+   */
+  public boolean isRestricted() {
+    return false;
+  }
 }
