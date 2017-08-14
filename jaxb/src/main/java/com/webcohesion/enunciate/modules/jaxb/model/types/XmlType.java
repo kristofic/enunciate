@@ -59,4 +59,10 @@ public interface XmlType {
    */
   boolean isSimple();
 
+  /**
+   * Whether this is a XML type with restriction.
+   *
+   * @return Whether this is a XML type with restriction.
+   */
+  boolean isRestricted();
 }

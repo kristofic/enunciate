@@ -15,6 +15,8 @@
  */
 package com.webcohesion.enunciate.samples.idl.genealogy.cite;
 
+import javax.validation.constraints.Size;
+
 /**
  * @author Ryan Heaton
  */
@@ -22,6 +24,7 @@ public class Note {
 
   private String text;
 
+  @Size(max = 1000)
   public String getText() {
     return text;
   }

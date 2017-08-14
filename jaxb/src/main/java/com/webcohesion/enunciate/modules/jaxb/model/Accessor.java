@@ -168,19 +168,19 @@ public abstract class Accessor extends DecoratedElement<javax.lang.model.element
   public XmlType getBaseType() {
     //first check to see if the base type is dictated by a specific annotation.
     if (isXmlID()) {
-      return KnownXmlType.ID;
+      return XmlTypeFactory.decorateWithRestrictions(KnownXmlType.ID, this, this.context);
     }
 
     if (isXmlIDREF()) {
-      return KnownXmlType.IDREF;
+      return XmlTypeFactory.decorateWithRestrictions(KnownXmlType.IDREF, this, this.context);
     }
 
     if (isSwaRef()) {
-      return KnownXmlType.SWAREF;
+      return XmlTypeFactory.decorateWithRestrictions(KnownXmlType.SWAREF, this, this.context);
     }
 
     XmlType xmlType = XmlTypeFactory.findSpecifiedType(this, this.context);
-    return (xmlType != null) ? xmlType : XmlTypeFactory.getXmlType(getAccessorType(), this.context);
+    return XmlTypeFactory.decorateWithRestrictions((xmlType != null) ? xmlType : XmlTypeFactory.getXmlType(getAccessorType(), this.context), this, this.context);
   }
 
   /**

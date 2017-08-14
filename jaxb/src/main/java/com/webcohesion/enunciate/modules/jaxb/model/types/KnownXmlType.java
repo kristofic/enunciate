@@ -128,5 +128,12 @@ public enum KnownXmlType implements XmlType {
     return !equals(KnownXmlType.ANY_TYPE);
   }
 
-
+  /**
+   * The definition of this type is never restricted.
+   *
+   * @return The definition of this type is never restricted.
+   */
+  public boolean isRestricted() {
+    return false;
+  }
 }

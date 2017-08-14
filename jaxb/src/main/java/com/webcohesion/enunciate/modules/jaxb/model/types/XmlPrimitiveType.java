@@ -68,4 +68,12 @@ public class XmlPrimitiveType implements XmlType {
     return true;
   }
 
+  /**
+   * The definition of this type is never restricted.
+   *
+   * @return The definition of this type is never restricted.
+   */
+  public boolean isRestricted() {
+    return false;
+  }
 }

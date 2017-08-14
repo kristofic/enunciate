@@ -92,4 +92,12 @@ public class MapXmlType implements XmlType {
     return valueType;
   }
 
+  /**
+   * The definition of this type is never restricted.
+   *
+   * @return The definition of this type is never restricted.
+   */
+  public boolean isRestricted() {
+    return false;
+  }
 }

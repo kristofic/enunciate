@@ -227,7 +227,16 @@
                 </${xs}:simpleType>
               </${xs}:element>
               [#else]
-              <${xs}:element name="${element.name}" type="${element.baseType.qname}" minOccurs="${element.minOccurs}"[#if "1" != element.maxOccurs] maxOccurs="${element.maxOccurs}"[/#if][#if element.mimeType??] xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:expectedContentTypes="${element.mimeType}"[/#if]>
+              <${xs}:element name="${element.name}" [#if !(element.baseType.restricted && element.baseType.simple)]type="${element.baseType.qname}"[/#if] minOccurs="${element.minOccurs}"[#if "1" != element.maxOccurs] maxOccurs="${element.maxOccurs}"[/#if][#if element.mimeType??] xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:expectedContentTypes="${element.mimeType}"[/#if]>
+                [#if element.baseType.restricted && element.baseType.simple]
+                <${xs}:simpleType>
+                  <${xs}:restriction base="${element.baseType.qname}">
+                  [#list element.baseType.getRestrictions() as restriction]
+                    <${xs}:${restriction.name} [#if restriction.value??]value="${restriction.value}"[/#if]/>
+                  [/#list]
+                  </${xs}:restriction>
+                </${xs}:simpleType>
+                [/#if]
                 [#if element.docValue?? || element.referencesQNameEnum!false]
               <${xs}:annotation>
                   [#if element.docValue??]
@@ -312,7 +321,16 @@
           [@processAnonymousType type=attribute.baseType/]
       </${xs}:attribute>
         [#else]
-      <${xs}:attribute name="${attribute.name}"[#if attribute.required] use="required"[/#if] type="${attribute.baseType.qname}"[#if attribute.mimeType??] xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:expectedContentTypes="${attribute.mimeType}"[/#if]>
+      <${xs}:attribute name="${attribute.name}"[#if attribute.required] use="required"[/#if] [#if !(attribute.baseType.restricted && attribute.baseType.simple)]type="${attribute.baseType.qname}"[/#if][#if attribute.mimeType??] xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:expectedContentTypes="${attribute.mimeType}"[/#if]>
+          [#if attribute.baseType.restricted && attribute.baseType.simple]
+          <${xs}:simpleType>
+            <${xs}:restriction base="${attribute.baseType.qname}">
+              [#list attribute.baseType.getRestrictions() as restriction]
+              <${xs}:${restriction.name} [#if restriction.value??]value="${restriction.value}"[/#if]/>
+              [/#list]
+            </${xs}:restriction>
+          </${xs}:simpleType>
+          [/#if]
           [#if attribute.docValue?? || attribute.referencesQNameEnum!false]
         <${xs}:annotation>
             [#if attribute.docValue??]
