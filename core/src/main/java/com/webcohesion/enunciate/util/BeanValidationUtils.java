@@ -15,15 +15,13 @@
  */
 package com.webcohesion.enunciate.util;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
+import com.sun.tools.javac.code.Attribute;
+
+import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.validation.constraints.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.lang.annotation.Annotation;
+import java.util.*;
 
 /**
  * @author Ryan Heaton
@@ -32,12 +30,12 @@ public class BeanValidationUtils {
 
   private BeanValidationUtils() {}
 
-  public static boolean isNotNull(Element el) {
-    return isNotNull(el, true);
+  public static boolean isNotNull(Element el, String ... ignoredValidationGroups) {
+    return isNotNull(el, true, ignoredValidationGroups);
   }
 
-  private static boolean isNotNull(Element el, boolean recurse) {
-    if (el.getAnnotation(NotNull.class) != null) {
+  private static boolean isNotNull(Element el, boolean recurse, String ... ignoredValidationGroups) {
+    if (getActiveValidation(el, NotNull.class, ignoredValidationGroups) != null) {
       return true;
     }
     List<? extends AnnotationMirror> annotations = el.getAnnotationMirrors();
@@ -45,10 +43,10 @@ public class BeanValidationUtils {
       DeclaredType annotationType = annotation.getAnnotationType();
       if (annotationType != null) {
         Element annotationElement = annotationType.asElement();
-        if (annotationElement.getAnnotation(NotNull.class) != null) {
+        if (getActiveValidation(annotationElement, NotNull.class, ignoredValidationGroups) != null) {
           return true;
         }
-        if (recurse && isNotNull(annotationElement, false)) {
+        if (recurse && isNotNull(annotationElement, false, ignoredValidationGroups)) {
           return true;
         }
       }
@@ -57,7 +55,42 @@ public class BeanValidationUtils {
     return false;
   }
 
-  public static boolean hasConstraints(Element el, boolean required) {
+  private static <A extends Annotation> A getActiveValidation(Element el, Class<A> annotationClass, String ... ignoredValidationGroups) {
+    String annotationClassName = annotationClass.getName();
+    for (AnnotationMirror annotationMirror : el.getAnnotationMirrors()) {
+      if (annotationMirror.getAnnotationType().toString().equals(annotationClassName)) {
+        return isActiveValidationAnnotation(annotationMirror, ignoredValidationGroups) ? el.getAnnotation(annotationClass) : null;
+      }
+    }
+    return null;
+  }
+
+  private static boolean isActiveValidationAnnotation(AnnotationMirror annotationMirror, String ... ignoredValidationGroups) {
+    List<String> ignored = Arrays.asList(ignoredValidationGroups);
+    for (String validationGroup : getValidationGroups(annotationMirror)) {
+      if (ignored.contains(validationGroup)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static List<String> getValidationGroups(AnnotationMirror annotationMirror) {
+    for (ExecutableElement value : annotationMirror.getElementValues().keySet()) {
+      if (value.getSimpleName().toString().equals("groups")) {
+        AnnotationValue annotationValue = annotationMirror.getElementValues().get(value);
+        List<Attribute.Class> groupAttributes = (List<Attribute.Class>) annotationValue.getValue();
+        List<String> groups = new ArrayList(groupAttributes.size());
+        for (Attribute.Class groupAttribute : groupAttributes) {
+          groups.add((groupAttribute.getValue().toString()));
+        }
+        return groups;
+      }
+    }
+    return Collections.emptyList();
+  }
+
+  public static boolean hasConstraints(Element el, boolean required, String ... ignoredValidationGroups) {
     if (required) {
       return true;
     }
@@ -70,7 +103,7 @@ public class BeanValidationUtils {
         if (annotationElement != null) {
           Element pckg = annotationElement.getEnclosingElement();
           if (pckg instanceof PackageElement && ((PackageElement)pckg).getQualifiedName().toString().equals("javax.validation.constraints")) {
-            return true;
+            return isActiveValidationAnnotation(annotation, ignoredValidationGroups);
           }
         }
       }
@@ -79,69 +112,69 @@ public class BeanValidationUtils {
     return false;
   }
 
-  public static String describeConstraints(Element el, boolean required) {
+  public static String describeConstraints(Element el, boolean required, String ... ignoredValidationGroups) {
     Null mustBeNull = el.getAnnotation(Null.class);
     if (mustBeNull != null) {
       return "must be null";
     }
 
     List<String> constraints = new ArrayList<String>();
-    required = required || el.getAnnotation(NotNull.class) != null;
+    required = required || getActiveValidation(el, NotNull.class, ignoredValidationGroups) != null;
     if (required) {
       constraints.add("required");
     }
 
-    AssertFalse mustBeFalse = el.getAnnotation(AssertFalse.class);
+    AssertFalse mustBeFalse = getActiveValidation(el, AssertFalse.class, ignoredValidationGroups);
     if (mustBeFalse != null) {
       constraints.add("must be \"false\"");
     }
 
-    AssertTrue mustBeTrue = el.getAnnotation(AssertTrue.class);
+    AssertTrue mustBeTrue = getActiveValidation(el, AssertTrue.class, ignoredValidationGroups);
     if (mustBeTrue != null) {
       constraints.add("must be \"true\"");
     }
 
-    DecimalMax decimalMax = el.getAnnotation(DecimalMax.class);
+    DecimalMax decimalMax = getActiveValidation(el, DecimalMax.class, ignoredValidationGroups);
     if (decimalMax != null) {
       constraints.add("max: " + decimalMax.value() + (decimalMax.inclusive() ? "" : " (exclusive)"));
     }
 
-    DecimalMin decimalMin = el.getAnnotation(DecimalMin.class);
+    DecimalMin decimalMin = getActiveValidation(el, DecimalMin.class, ignoredValidationGroups);
     if (decimalMin != null) {
       constraints.add("min: " + decimalMin.value() + (decimalMin.inclusive() ? "" : " (exclusive)"));
     }
 
-    Digits digits = el.getAnnotation(Digits.class);
+    Digits digits = getActiveValidation(el, Digits.class, ignoredValidationGroups);
     if (digits != null) {
       constraints.add("max digits: " + digits.integer() + " (integer), " + digits.fraction() + " (fraction)");
     }
 
-    Future dateInFuture = el.getAnnotation(Future.class);
+    Future dateInFuture = getActiveValidation(el, Future.class, ignoredValidationGroups);
     if (dateInFuture != null) {
       constraints.add("future date");
     }
 
-    Max max = el.getAnnotation(Max.class);
+    Max max = getActiveValidation(el, Max.class, ignoredValidationGroups);
     if (max != null) {
       constraints.add("max: " + max.value());
     }
 
-    Min min = el.getAnnotation(Min.class);
+    Min min = getActiveValidation(el, Min.class, ignoredValidationGroups);
     if (min != null) {
       constraints.add("min: " + min.value());
     }
 
-    Past dateInPast = el.getAnnotation(Past.class);
+    Past dateInPast = getActiveValidation(el, Past.class, ignoredValidationGroups);
     if (dateInPast != null) {
       constraints.add("past date");
     }
 
-    Pattern mustMatchPattern = el.getAnnotation(Pattern.class);
+    Pattern mustMatchPattern = getActiveValidation(el, Pattern.class, ignoredValidationGroups);
     if (mustMatchPattern != null) {
       constraints.add("regex: " + mustMatchPattern.regexp());
     }
 
-    Size size = el.getAnnotation(Size.class);
+    Size size = getActiveValidation(el, Size.class, ignoredValidationGroups);
     if (size != null) {
       constraints.add("max size: " + size.max() + ", min size: " + size.min());
     }

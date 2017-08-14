@@ -29,6 +29,7 @@ import javax.xml.bind.annotation.XmlRegistry;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -71,6 +72,10 @@ public class JaxbModule extends BasicProviderModule implements TypeDetectingModu
     return this.config.getBoolean("[@disableExamples]", false);
   }
 
+  public String [] getIgnoredValidationGroups() {
+    return this.config.getStringArray("[@ignoredValidationGroups]");
+  }
+
   @Override
   public void setDefaultDataTypeDetectionStrategy(DataTypeDetectionStrategy strategy) {
     this.defaultDataTypeDetectionStrategy = strategy;
@@ -101,7 +106,7 @@ public class JaxbModule extends BasicProviderModule implements TypeDetectingModu
 
   @Override
   public void call(EnunciateContext context) {
-    this.jaxbContext = new EnunciateJaxbContext(context, isDisableExamples());
+    this.jaxbContext = new EnunciateJaxbContext(context, isDisableExamples(), getIgnoredValidationGroups());
     DataTypeDetectionStrategy detectionStrategy = getDataTypeDetectionStrategy();
     switch (detectionStrategy) {
       case aggressive:

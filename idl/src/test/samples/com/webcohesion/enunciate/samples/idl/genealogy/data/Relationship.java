@@ -15,6 +15,10 @@
  */
 package com.webcohesion.enunciate.samples.idl.genealogy.data;
 
+import com.webcohesion.enunciate.samples.idl.genealogy.services.IgnoredValidationGroup;
+
+import javax.validation.constraints.NotNull;
+
 /**
  * A relationship between two people.
  *
@@ -50,6 +54,7 @@ public class Relationship extends Assertion {
    *
    * @return The relationship type.
    */
+  @NotNull(groups = IgnoredValidationGroup.class)
   public RelationshipType getType() {
     return type;
   }
@@ -68,6 +73,7 @@ public class Relationship extends Assertion {
    *
    * @return The name of the source person.
    */
+  @NotNull
   public Name getSourcePersonName() {
     return sourcePersonName;
   }
@@ -86,6 +92,7 @@ public class Relationship extends Assertion {
    *
    * @return The name of the target person.
    */
+  @NotNull
   public Name getTargetPersonName() {
     return targetPersonName;
   }
