@@ -1165,12 +1165,12 @@ public class TestEnunciateIDLModule extends TestCase {
         assertRelationshipTypeType(relationshipTypeType);
       }
       else if ("sourcePersonName".equals(childElementName)) {
-        assertEquals(BigInteger.ZERO, childElement.getMinOccurs());
+        assertEquals(BigInteger.ONE, childElement.getMinOccurs());
         assertEquals(BigInteger.ONE, childElement.getMaxOccurs());
         assertQNameEquals(DATA_NAMESPACE, "name", elementDecl.getType());
       }
       else if ("targetPersonName".equals(childElementName)) {
-        assertEquals(BigInteger.ZERO, childElement.getMinOccurs());
+        assertEquals(BigInteger.ONE, childElement.getMinOccurs());
         assertEquals(BigInteger.ONE, childElement.getMaxOccurs());
         assertQNameEquals(DATA_NAMESPACE, "name", elementDecl.getType());
       }

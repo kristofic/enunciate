@@ -54,6 +54,7 @@ public class EnunciateJaxbContext extends EnunciateModuleContext {
 
   private int prefixIndex = 0;
   private final boolean disableExamples;
+  private final String [] ignoredValidationGroups;
   private final Map<String, XmlType> knownTypes;
   private final Map<String, TypeDefinition> typeDefinitions;
   private final Map<QName, TypeDefinition> typeDefinitionsByQName;
@@ -62,9 +63,10 @@ public class EnunciateJaxbContext extends EnunciateModuleContext {
   private final Map<String, SchemaInfo> schemas;
   private final Map<String, Map<String, XmlSchemaType>> packageSpecifiedTypes;
 
-  public EnunciateJaxbContext(EnunciateContext context, boolean disableExamples) {
+  public EnunciateJaxbContext(EnunciateContext context, boolean disableExamples, String [] ignoredValidationGroups) {
     super(context);
     this.disableExamples = disableExamples;
+    this.ignoredValidationGroups = ignoredValidationGroups;
     this.knownTypes = loadKnownTypes();
     this.typeDefinitions = new HashMap<String, TypeDefinition>();
     this.typeDefinitionsByQName = new HashMap<QName, TypeDefinition>();
@@ -105,6 +107,10 @@ public class EnunciateJaxbContext extends EnunciateModuleContext {
 
   public boolean isDisableExamples() {
     return disableExamples;
+  }
+
+  public String[] getIgnoredValidationGroups() {
+    return ignoredValidationGroups;
   }
 
   public EnunciateContext getContext() {

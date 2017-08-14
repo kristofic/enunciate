@@ -117,7 +117,7 @@ public class PropertyImpl implements Property {
   }
 
   public String getConstraints() {
-    return BeanValidationUtils.describeConstraints(this.accessor, this.accessor instanceof Element && ((Element) this.accessor).isRequired());
+    return BeanValidationUtils.describeConstraints(this.accessor, this.accessor instanceof Element && ((Element) this.accessor).isRequired(), this.accessor.getContext().getIgnoredValidationGroups());
   }
 
   @Override
