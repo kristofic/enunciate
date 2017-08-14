@@ -226,7 +226,7 @@ public class XmlTypeFactory {
           int min = (Integer) constraint.getParams()[1];
           restrictions.add(new Restriction(XSFacet.FACET_MAXLENGTH, String.valueOf(max)));
           if (min > 0) {
-            restrictions.add(new Restriction(XSFacet.FACET_MINLENGTH, String.valueOf(max)));
+            restrictions.add(new Restriction(XSFacet.FACET_MINLENGTH, String.valueOf(min)));
           }
           break;
         }
