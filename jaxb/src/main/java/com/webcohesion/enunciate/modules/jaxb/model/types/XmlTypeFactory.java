@@ -36,6 +36,8 @@ import javax.xml.bind.annotation.XmlSchemaTypes;
 import java.util.*;
 import java.util.concurrent.Callable;
 
+import static java.util.Arrays.asList;
+
 /**
  * A decorator that decorates the relevant type mirrors as xml type mirrors.
  *
@@ -122,7 +124,7 @@ public class XmlTypeFactory {
       }
 
       if (schemaTypes != null) {
-        allSpecifiedTypes.addAll(Arrays.asList(schemaTypes.value()));
+        allSpecifiedTypes.addAll(asList(schemaTypes.value()));
       }
 
       for (final XmlSchemaType specifiedType : allSpecifiedTypes) {
@@ -172,61 +174,68 @@ public class XmlTypeFactory {
   }
 
   private static List<Restriction> getTypeRestrictions(XmlType baseType, Accessor accessor, EnunciateJaxbContext context) {
+    if (!(baseType instanceof KnownXmlType)) {
+      return Collections.emptyList();
+    }
+
+    KnownXmlType knownType = (KnownXmlType) baseType;
+
     List<BeanValidationUtils.Constraint> constraints = BeanValidationUtils.collectConstraints(accessor, context.getIgnoredValidationGroups());
     List<Restriction> restrictions = new ArrayList(constraints.size());
     for (BeanValidationUtils.Constraint constraint : constraints) {
       switch (constraint.getType()) {
         case False: {
-          restrictions.add(new Restriction(XSFacet.FACET_PATTERN, "false"));
+          addRestrictionIfSupported(new Restriction(XSFacet.FACET_PATTERN, "false"), restrictions, knownType);
           break;
         }
         case True: {
-          restrictions.add(new Restriction(XSFacet.FACET_PATTERN, "true"));
+          addRestrictionIfSupported(new Restriction(XSFacet.FACET_PATTERN, "true"), restrictions, knownType);
           break;
         }
         case DecimalMax: {
           boolean inclusive = Boolean.TRUE.equals(constraint.getParams()[1]);
-          restrictions.add(new Restriction(inclusive ? XSFacet.FACET_MAXINCLUSIVE : XSFacet.FACET_MAXEXCLUSIVE, String.valueOf(constraint.getParams()[0])));
+          addRestrictionIfSupported(new Restriction(inclusive ? XSFacet.FACET_MAXINCLUSIVE : XSFacet.FACET_MAXEXCLUSIVE, String.valueOf(constraint.getParams()[0])), restrictions, knownType);
           break;
         }
         case DecimalMin: {
           boolean inclusive = Boolean.TRUE.equals(constraint.getParams()[1]);
-          restrictions.add(new Restriction(inclusive ? XSFacet.FACET_MININCLUSIVE : XSFacet.FACET_MINEXCLUSIVE, String.valueOf(constraint.getParams()[0])));
+          addRestrictionIfSupported(new Restriction(inclusive ? XSFacet.FACET_MININCLUSIVE : XSFacet.FACET_MINEXCLUSIVE, String.valueOf(constraint.getParams()[0])), restrictions, knownType);
           break;
         }
         case Digits: {
           int integer = (Integer) constraint.getParams()[0];
           int fraction = (Integer) constraint.getParams()[1];
-          restrictions.add(new Restriction(XSFacet.FACET_TOTALDIGITS, String.valueOf(integer + fraction)));
-          restrictions.add(new Restriction(XSFacet.FACET_FRACTIONDIGITS, String.valueOf(fraction)));
+
+          addRestrictionIfSupported(new Restriction(XSFacet.FACET_TOTALDIGITS, String.valueOf(integer + fraction)), restrictions, knownType);
+          addRestrictionIfSupported(new Restriction(XSFacet.FACET_FRACTIONDIGITS, String.valueOf(fraction)), restrictions, knownType);
           break;
         }
         case Max: {
-          if (baseType == KnownXmlType.STRING || baseType == KnownXmlType.NORMALIZED_STRING) {
-            restrictions.add(new Restriction(XSFacet.FACET_MAXLENGTH, String.valueOf(constraint.getParams()[0])));
+          if (knownType.isFacetApplicable(XSFacet.FACET_MAXLENGTH)) {
+            addRestrictionIfSupported(new Restriction(XSFacet.FACET_MAXLENGTH, String.valueOf(constraint.getParams()[0])), restrictions, knownType);
           } else {
-            restrictions.add(new Restriction(XSFacet.FACET_MAXINCLUSIVE, String.valueOf(constraint.getParams()[0])));
+            addRestrictionIfSupported(new Restriction(XSFacet.FACET_MAXINCLUSIVE, String.valueOf(constraint.getParams()[0])), restrictions, knownType);
           }
           break;
         }
         case Min: {
-          if (baseType == KnownXmlType.STRING || baseType == KnownXmlType.NORMALIZED_STRING) {
-            restrictions.add(new Restriction(XSFacet.FACET_MINLENGTH, String.valueOf(constraint.getParams()[0])));
+          if (knownType.isFacetApplicable(XSFacet.FACET_MINLENGTH)) {
+            addRestrictionIfSupported(new Restriction(XSFacet.FACET_MINLENGTH, String.valueOf(constraint.getParams()[0])), restrictions, knownType);
           } else {
-            restrictions.add(new Restriction(XSFacet.FACET_MININCLUSIVE, String.valueOf(constraint.getParams()[0])));
+            addRestrictionIfSupported(new Restriction(XSFacet.FACET_MININCLUSIVE, String.valueOf(constraint.getParams()[0])), restrictions, knownType);
           }
           break;
         }
         case Regexp: {
-          restrictions.add(new Restriction(XSFacet.FACET_PATTERN, String.valueOf(constraint.getParams()[0])));
+          addRestrictionIfSupported(new Restriction(XSFacet.FACET_PATTERN, String.valueOf(constraint.getParams()[0])), restrictions, knownType);
           break;
         }
         case Size: {
           int max = (Integer) constraint.getParams()[0];
           int min = (Integer) constraint.getParams()[1];
-          restrictions.add(new Restriction(XSFacet.FACET_MAXLENGTH, String.valueOf(max)));
+          addRestrictionIfSupported(new Restriction(XSFacet.FACET_MAXLENGTH, String.valueOf(max)), restrictions, knownType);
           if (min > 0) {
-            restrictions.add(new Restriction(XSFacet.FACET_MINLENGTH, String.valueOf(min)));
+            addRestrictionIfSupported(new Restriction(XSFacet.FACET_MINLENGTH, String.valueOf(min)), restrictions, knownType);
           }
           break;
         }
@@ -234,5 +243,11 @@ public class XmlTypeFactory {
     }
 
     return restrictions;
+  }
+
+  private static void addRestrictionIfSupported(Restriction restriction, List<Restriction> restrictions, KnownXmlType knownXmlType) {
+    if (knownXmlType.isFacetApplicable(restriction.getName())) {
+      restrictions.add(restriction);
+    }
   }
 }
