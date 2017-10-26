@@ -73,7 +73,7 @@ public class JaxbModule extends BasicProviderModule implements TypeDetectingModu
   }
 
   public String [] getIgnoredValidationGroups() {
-    return this.config.getStringArray("[@ignoredValidationGroups]");
+    return this.config.getStringArray("ignoredValidationGroup");
   }
 
   @Override

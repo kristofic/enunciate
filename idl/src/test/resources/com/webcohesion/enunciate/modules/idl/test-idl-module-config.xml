@@ -29,6 +29,9 @@
       <wsdl namespace="http://enunciate.webcohesion.com/samples/full" filename="full.wsdl"/>
       <wsdl namespace="http://services.genealogy.samples.idl.enunciate.webcohesion.com/" filename="relationship.wsdl"/>
     </idl>
-    <jaxb ignoredValidationGroups="com.webcohesion.enunciate.samples.idl.genealogy.services.IgnoredValidationGroup"/>
+    <jaxb>
+      <ignoredValidationGroup>com.webcohesion.enunciate.samples.idl.genealogy.services.IgnoredValidationGroup</ignoredValidationGroup>
+      <ignoredValidationGroup>com.webcohesion.enunciate.samples.idl.genealogy.services.IgnoredValidationGroup2</ignoredValidationGroup>
+    </jaxb>
   </modules>
 </enunciate>
